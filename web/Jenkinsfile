@@ -1,1 +1,119 @@
-##
+pipeline{
+    agent any
+
+    parameters{
+        string(
+            name: 'NGINX_IP',
+            defaultValue: '',
+            description: 'Nginx instance IP address'
+        )
+        string(
+            name: 'PYTHON_IP',
+            defaultValue: '',
+            description: 'Python instance IP address'
+        )
+        string(
+            name: 'JAVA_IP',
+            defaultValue: '',
+            description: 'Java instance IP address'
+        )
+    }
+
+    environment {
+        AWS_SECRET_ACCESS_KEY = credentials ('AWS_SECRET_ACCESS_KEY')
+        AWS_ACCESS_KEY_ID = credentials ('AWS_ACCESS_KEY_ID')
+        AWS_DEFAULT_REGION = 'eu-west-1'
+        SSH_USER = credentials ('SSH_USER')
+    }
+
+    stages{
+
+        stage('Validate Parameter') {
+            steps {
+                script {
+                    if (params.NGINX_IP == '') {
+                        error('NGINX_IP parameter is required!')
+                    }
+                    if (params.PYTHON_IP == '') {
+                        error('PYTHON_IP parameter is required!')
+                    }
+                    if (params.JAVA_IP == '') {
+                        error('JAVA_IP parameter is required!')
+                    }
+                }
+            }
+        }
+
+        stage ('Checkout'){
+            steps{
+                checkout scm
+            }
+        }
+
+        stage('Install and Launch') {
+            steps {
+                script {
+                    sshagent(credentials: ['AWS-SSH-KEY']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${params.NGINX_IP} '
+                                sudo yum install git -y
+                                sudo yum install nginx -y
+                                sudo systemctl start nginx
+                                sudo systemctl enable nginx
+                                cd ~
+                                rm -rfv Techbleat-week-8
+                                git clone https://github.com/oyediran-phillip-oyeniyi/Techbleat-week-8.git
+                                cd Techbleat-week-8/
+                                sed 's/FRUIT_MACHINE/${PYTHON_IP}/g' -i web/index.html
+                                sed 's/VEG_MACHINE/${JAVA_IP}/g' -i web/index.html
+                                sudo cp web/index.html /usr/share/nginx/html
+                                sudo systemctl status nginx --no-pager | head -5
+                            '
+                        """
+                    }
+                }
+            }
+        }
+
+
+        stage('Restart Nginx') {
+            steps {
+                script {
+                    sshagent(credentials: ['AWS-SSH-KEY']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${params.NGINX_IP} '
+                                sudo systemctl restart nginx
+                                sleep 2
+                                sudo systemctl status nginx --no-pager | head -10
+                            '
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo "Verifying deployment..."
+                    sshagent(credentials: ['AWS-SSH-KEY']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${params.NGINX_IP} '
+                                echo "Files in Nginx directory:"
+                                ls -ltra /usr/share/nginx/html
+                            '
+                        """
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Deployment completed successfully!'
+        }
+        failure {
+            echo 'Deployment failed!'
+        }
+    }
+}
