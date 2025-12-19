@@ -1,1 +1,44 @@
-##
+pipeline{
+    agent any
+
+    parameters{
+        string(
+            name: 'PYTHON_IP',
+            defaultValue: '',
+            description: 'Enter your private ec2 ip address'
+        )
+    }
+
+    stage ('Deploy FastAPI Service') {
+    steps {
+        sshagent (credentials: ['AWS-SSH-KEY']) {
+            sh """
+                ssh -o StrictHostKeyChecking=no ec2-user@${PYTHON_IP} '
+                    set -e
+                    sudo yum install git python3-pip -y
+                    cd ~
+                    
+                    sudo systemctl stop fruit.service || true
+                    
+                    rm -rf Techbleat-week-8
+                    git clone https://github.com/oyediran-phillip-oyeniyi/Techbleat-week-8.git
+                    cd Techbleat-week-8/python
+                    
+                    python3 -m venv .env
+                    source .env/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                    
+                    sudo cp fruit.service /etc/systemd/system/fruit.service
+                    sudo systemctl daemon-reload
+                    sudo systemctl enable fruit.service
+                    sudo systemctl start fruit.service
+                    
+                    sleep 2
+                    sudo systemctl status fruit.service
+                '
+            """
+        }
+    }
+}
+}
