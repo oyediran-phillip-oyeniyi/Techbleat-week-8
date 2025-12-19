@@ -1,1 +1,42 @@
-##
+pipeline{
+    agent any
+
+    parameters{
+        string(
+            name: 'JAVA_IP',
+            defaultValue: '',
+            description: 'Enter your private ec2 ip address'
+        )
+    }
+    stages{
+        stage ('Deploy Spring Boot Service') {
+            steps {
+                sshagent (credentials: ['AWS-SSH-KEY']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ec2-user@${JAVA_IP} '
+                            set -e
+                            sudo yum install git java-17-amazon-corretto-devel maven -y
+                            cd ~
+                            
+                            sudo systemctl stop springboot.service || true
+                            
+                            rm -rf Techbleat-week-8
+                            git clone https://github.com/oyediran-phillip-oyeniyi/Techbleat-week-8.git
+                            cd Techbleat-week-8/java
+                            
+                            mvn clean package -DskipTests
+                            
+                            sudo cp springboot.service /etc/systemd/system/springboot.service
+                            sudo systemctl daemon-reload
+                            sudo systemctl enable springboot.service
+                            sudo systemctl start springboot.service
+                            
+                            sleep 3
+                            sudo systemctl status springboot.service
+                        '
+                    """
+                }
+            }
+        }
+    }
+}
