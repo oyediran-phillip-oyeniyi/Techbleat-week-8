@@ -1,0 +1,6 @@
+nginx_ami = "ami-001c52e929f3a273f"
+python_ami = "ami-0c1ea9dca73d55b93"
+java_ami = "ami-08ba10405cb714a9b"
+instance_type = "c7i-flex.large"
+project_subnet = "subnet-05879e6898e207a2b"
+key_name = "aws-key"

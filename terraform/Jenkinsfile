@@ -1,1 +1,96 @@
-##
+pipeline {
+    
+    agent any
+
+    parameters{
+        choice (
+            name: 'TF_ACTION',
+            choices: ['plan', 'apply', 'destroy'],
+            description: 'Pick your desired terraform action'
+        )
+    }
+    
+    environment {
+        AWS_SECRET_ACCESS_KEY = credentials ('AWS_SECRET_ACCESS_KEY')
+        AWS_ACCESS_KEY_ID = credentials ('AWS_ACCESS_KEY_ID')
+        AWS_DEFAULT_REGION = 'eu-west-1'
+    }
+    stages {
+            stage ('Checkout'){
+                steps{
+                    checkout scm
+                }
+            }
+
+            stage('Terraform Init') {
+                steps {
+                sh '''
+                    cd terraform
+                    rm -rf .terraform
+                    terraform init -reconfigure
+                    terraform state list || echo "No existing state"
+                '''
+                }
+            }
+            stage ('Terraform Validate'){
+                steps{
+                    dir('terraform'){
+                        sh 'terraform validate'
+                    }
+                }
+            }
+            stage ('Terraform Plan'){
+                when {
+                    expression { params.TF_ACTION == 'plan'}
+                }
+                steps{
+                    dir('terraform'){
+                        sh 'terraform plan -var-file="phil.tfvars"'
+                    }
+                }
+            }
+            stage ('Terraform Apply'){
+                when {
+                    expression { params.TF_ACTION == 'apply'}
+                }
+                steps{
+                    dir('terraform'){
+                        sh 'terraform apply -var-file="phil.tfvars" -auto-approve'
+                    }
+                }
+            }
+            stage ('Terraform Destroy'){
+                when {
+                    expression { params.TF_ACTION == 'destroy'}
+                }
+                steps{
+                    dir('terraform'){
+                        sh 'terraform destroy -var-file="phil.tfvars" -auto-approve'
+                    }
+                }
+            }
+
+            stage ('Display Outputs'){
+            when {
+                expression { params.TF_ACTION == 'apply'}
+            }
+            steps{
+                dir('terraform'){
+                    sh '''
+                        echo "Infrastructure deployed successfully"                        
+                        terraform output
+                    '''
+                }
+            }
+        }
+    }
+        
+    post{
+        success{
+            echo 'Pipeline executed successfully'
+        }
+        failure{
+            echo 'Pipeline execution failed'
+        }
+    }
+}
