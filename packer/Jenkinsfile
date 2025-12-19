@@ -1,0 +1,72 @@
+pipeline {
+    agent any
+    
+    parameters {
+        choice (
+            name: 'AMI_TYPE', 
+            choices: ['all', 'nginx', 'python', 'java'],
+            description: "Pick your desired AMI to create"
+        )
+    }
+
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        AWS_DEFAULT_REGION = 'eu-west-1'
+    }
+
+    
+    stages {
+        stage ('Checkout'){
+            steps {
+                checkout scm
+            }
+        }
+        stage ('Packer Initialization'){
+            steps {
+                dir ('packer'){
+                    script{
+                        echo 'Initializing Packer .......'
+                        sh 'packer init .'
+                    }
+                }
+            }
+        }
+        stage ( 'Packer Validation'){
+            steps {
+                dir ('packer'){
+                    script{
+                        echo 'Validating Packer ,......'
+                        sh 'packer validate .'
+                    }
+                }
+            }
+        }
+        stage ('Packer Build'){
+            steps {
+                dir ('packer'){
+                    script{
+                        echo 'Building AMI........'
+
+                        if (params.AMI_TYPE == 'all'){
+                            sh 'packer build .'
+                        }
+                        else {
+                            sh "packer build -only='${params.AMI_TYPE}-ami-build.*' ."
+                        }
+                    }
+                }
+
+            }
+        } 
+    }
+
+    post {
+        success {
+            echo "AMI build completed successfully"
+        }
+        failure {
+            echo "AMI build failed"
+        }
+    }
+}

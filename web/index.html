@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Produce Prices</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h1 { color: #333; margin-bottom: 6px; }
+    .section { margin-top: 24px; }
+    table { border-collapse: collapse; width: 360px; margin-top: 8px; }
+    th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
+    th { background-color: #f0f0f0; }
+    button { padding: 8px 14px; margin-right: 10px; cursor: pointer; }
+    #output { margin-top: 10px; font-size: 14px; color: #444; }
+  </style>
+</head>
+<body>
+  <h1>Produce List</h1>
+  <div>
+    <button id="loadFruits">Load Fruits</button>
+    <button id="loadVegetables">Load Vegetables</button>
+  </div>
+  <div id="output"></div>
+
+  <div class="section">
+    <h2>Fruits (FastAPI)</h2>
+    <table id="fruitTable">
+      <thead><tr><th>Fruit</th><th>Price ($)</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Vegetables (Java)</h2>
+    <table id="vegTable">
+      <thead><tr><th>Vegetable</th><th>Price ($)</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const FRUITS_API = "http://FRUIT_MACHINE:9000/fruits";      // FastAPI
+    const VEGETABLES_API = "http://VEG_MACHINE:8080/vegetables"; // Java Spring
+
+    const out = document.getElementById("output");
+
+    async function load(url, tableSelector, key) {
+      out.textContent = "Loading...";
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        const items = data[key] || [];
+        const tbody = document.querySelector(`${tableSelector} tbody`);
+        tbody.innerHTML = "";
+        items.forEach(item => {
+          const tr = document.createElement("tr");
+          const price =
+            typeof item.price === "number" ? item.price.toFixed(2) : item.price;
+          tr.innerHTML = `<td>${item.name}</td><td>${price}</td>`;
+          tbody.appendChild(tr);
+        });
+
+        out.textContent = "Loaded ✓";
+      } catch (err) {
+        out.textContent = `Error: ${err.message}`;
+        console.error(err);
+      }
+    }
+
+    document.getElementById("loadFruits").onclick = () =>
+      load(FRUITS_API, "#fruitTable", "fruits");
+
+    document.getElementById("loadVegetables").onclick = () =>
+      load(VEGETABLES_API, "#vegTable", "vegetables");
+  </script>
+</body>
+</html>
