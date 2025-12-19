@@ -6,7 +6,7 @@ After=network.target
 User=ec2-user
 Group=ec2-user
 WorkingDirectory=/home/ec2-user/Techbleat-week-8/java
-ExecStart=/usr/bin/java -jar target/your-app-name-0.0.1-SNAPSHOT.jar --server.port=8080
+ExecStart=/usr/bin/java -jar target/produce-app-0.0.1-SNAPSHOT.jar --server.port=8080
 Restart=always
 RestartSec=5
 StandardOutput=journal
