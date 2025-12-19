@@ -108,7 +108,7 @@ build  {
     provisioner "shell" {
         inline = [
             "sudo yum update -y",
-            "sudo yum install git -y"
+            "sudo yum install git -y",
             "sudo yum install java-17-amazon-corretto -y",
             "sudo yum install maven -y"
         ]
